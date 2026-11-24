@@ -88,21 +88,58 @@ def _ssns(text: str) -> list[Finding]:
     return out
 
 
+# 13–19 digits with optional spaces or dashes. Shared by the card detector
+# and by the phone rule, which must not consume a prefix of a card-length run.
+_CARD_RUN = re.compile(r"\b(?:\d[ -]*?){13,19}\b")
+
+# A label immediately before the digits. A mistyped check digit should still
+# be treated as a card when the text already calls it one.
+_CARD_LABEL = re.compile(
+    r"(?i)"
+    r"(?:"
+    r"\b(?:credit|debit)?\s*cards?(?:\s*(?:number|no\.?|#))?"
+    r"|\bcc(?:\s*(?:number|no\.?|#))?"
+    r"|\bpan\b"
+    r"|\bprimary\s*account\s*number"
+    r")"
+    r"\s*[:#]?\s*$"
+)
+
+
+def _card_runs(text: str) -> list[tuple[int, int, str, str]]:
+    """Return (start, end, raw, digits) for each 13–19 digit card-length run."""
+    out: list[tuple[int, int, str, str]] = []
+    for match in _CARD_RUN.finditer(text):
+        raw = match.group(0)
+        digits = re.sub(r"\D", "", raw)
+        if 13 <= len(digits) <= 19:
+            out.append((match.start(), match.end(), raw.strip(), digits))
+    return out
+
+
+def _preceded_by_card_label(text: str, start: int) -> bool:
+    prefix = text[max(0, start - 48) : start]
+    return _CARD_LABEL.search(prefix) is not None
+
+
+def _overlaps_span(start: int, end: int, other_start: int, other_end: int) -> bool:
+    return start < other_end and other_start < end
+
+
 def _cards(text: str) -> list[Finding]:
     out: list[Finding] = []
-    # 13–19 digits with optional spaces or dashes.
-    pattern = r"\b(?:\d[ -]*?){13,19}\b"
-    for match in _finditer(pattern, text):
-        digits = re.sub(r"\D", "", match.group(0))
-        if luhn_ok(digits):
-            out.append(
-                Finding("credit_card", match.group(0).strip(), match.start(), match.end(), digits)
-            )
+    for start, end, raw, digits in _card_runs(text):
+        # Luhn-valid PANs are always cards. A run that fails Luhn is still a
+        # card when a label makes the intent clear, so a typo is masked
+        # instead of leaking or being mis-tagged as a phone or account.
+        if luhn_ok(digits) or _preceded_by_card_label(text, start):
+            out.append(Finding("credit_card", raw, start, end, digits))
     return out
 
 
 def _phones(text: str) -> list[Finding]:
     out: list[Finding] = []
+    card_runs = _card_runs(text)
     pattern = (
         r"(?:(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4})"
     )
@@ -119,6 +156,10 @@ def _phones(text: str) -> list[Finding]:
         # Reject if this is clearly a dashed SSN (000-00-0000 has two dashes
         # in SSN places) — those are handled by the SSN rule.
         if re.fullmatch(r"\d{3}-\d{2}-\d{4}", raw.strip()):
+            continue
+        # A 13–19 digit run (with or without separators) is card-length, even
+        # when Luhn fails. Do not tag the first 10 digits as a phone.
+        if any(_overlaps_span(match.start(), match.end(), s, e) for s, e, _, _ in card_runs):
             continue
         out.append(Finding("phone", raw.strip(), match.start(), match.end(), digits))
     return out
@@ -200,7 +241,11 @@ def _accounts(text: str) -> list[Finding]:
     for match in _finditer(labeled, text):
         raw = match.group(1).strip()
         digits = re.sub(r"\D", "", raw)
-        if 8 <= len(digits) <= 17:
+        # 13–19 digit runs are card-length, so they are not bank accounts
+        # even when a nearby word is "account" or the number is dashed like a PAN.
+        # (The account pattern only allows up to 17 digits, so the remaining
+        # window is 8–12.)
+        if 8 <= len(digits) <= 12:
             start, end = match.start(1), match.end(1)
             out.append(Finding("bank_account", raw, start, end, digits))
     return out

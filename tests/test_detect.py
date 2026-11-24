@@ -97,3 +97,38 @@ def test_overlaps_prefer_higher_priority():
     types = [f.pii_type for f in findings]
     assert types.count("ssn") == 1
     assert "phone" not in types
+
+def test_failed_luhn_card_run_is_not_phone_or_account():
+    # 16 digits that fail Luhn used to be tagged as a phone (first 10 digits,
+    # offsets 12–22) when they followed a card label.
+    plain = "Card number 4111111111111112 for a $200 deposit"
+    findings = detect(plain)
+    types = [f.pii_type for f in findings]
+    assert "phone" not in types
+    assert "bank_account" not in types
+    assert _values(plain, "credit_card") == ["4111111111111112"]
+    card = next(f for f in findings if f.pii_type == "credit_card")
+    assert (card.start, card.end) == (12, 28)
+
+    # The dashed form used to be tagged as a bank account. After a card label
+    # it is a card; after an account label it is left untagged (Luhn fails,
+    # and card-length runs are not accounts).
+    dashed_card = "Card number 4111-1111-1111-1112 for a $200 deposit"
+    assert "phone" not in _types(dashed_card)
+    assert "bank_account" not in _types(dashed_card)
+    assert _values(dashed_card, "credit_card") == ["4111-1111-1111-1112"]
+
+    dashed_account = "Account number: 4111-1111-1111-1112"
+    assert _values(dashed_account, "bank_account") == []
+    assert _values(dashed_account, "credit_card") == []
+    assert "phone" not in _types(dashed_account)
+
+    # Unlabeled failed-Luhn runs stay untagged, and are still not phones.
+    unlabeled = "Charge 4111111111111112 today"
+    assert _types(unlabeled) == set()
+
+
+def test_real_phone_and_account_still_detected():
+    assert _values("Call (207) 555-0148 please", "phone") == ["(207) 555-0148"]
+    assert _values("Mobile 207-555-0148", "phone") == ["207-555-0148"]
+    assert _values("Account number: 1002003344", "bank_account") == ["1002003344"]
