@@ -17,7 +17,8 @@ That is what this proxy shows, in one screen, on a Lakeside Honda credit applica
 ## Quick start
 
 ```bash
-cd 06-pii-unmasking-proxy
+git clone https://github.com/DanMcB1/ai-pii-unmasking-proxy.git
+cd ai-pii-unmasking-proxy
 ./run.sh
 ```
 
@@ -77,11 +78,12 @@ An optional OpenAI-compatible or Ollama backend is supported with `PII_PROXY_LLM
 ## Project layout
 
 ```
-06-pii-unmasking-proxy/
+ai-pii-unmasking-proxy/
   app.py                 Streamlit UI (side-by-side original / masked / output)
   run.sh                 Starts the FastAPI proxy and the UI
   requirements.txt
   README.md
+  LICENSE                MIT, Copyright (c) 2026 Daniel McBrearty
   DEMO_SCRIPT.md
   pii_proxy/             Detect, tokenize, vault, audit, mock LLM, API
   tests/
@@ -95,3 +97,7 @@ An optional OpenAI-compatible or Ollama backend is supported with `PII_PROXY_LLM
 Start `./run.sh`, leave the role on **F&I Manager**, click **Run through the proxy**, and point at the four panels. The SSN, card, VIN, and bank numbers are in the original and in the restored output, and they are tokens in the two middle panels. Then switch the role to **Sales Consultant**, run it again, and show that the delivered text stays tokenized. If there is time, click **Verify hash chain** or run `python -m pii_proxy verify-chain`. The talk track is in [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md).
 
 Daniel’s background is car sales, F&I, and auto software sales (Dealr.cloud), not professional security engineering. This project is meant to show he understands **why a deal jacket should not be pasted into a model vendor, how deterministic tokens keep a conversation usable, and why the audit log must not itself become a pile of Social Security numbers**.
+
+## License
+
+This project is released under the [MIT License](LICENSE). Copyright (c) 2026 Daniel McBrearty.
