@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.streamlit/secrets.toml
+.env
+.cache/
+*.log
+data/demo.keys
+data/*.keys
+data/vault.sqlite
+data/vault.sqlite-*
+data/audit.jsonl
+data/*.pid
+data/*.log
+data/*.db
+data/*.db-wal
+data/*.db-shm
+# Never commit demo keys, the encrypted vault, or the live audit log.

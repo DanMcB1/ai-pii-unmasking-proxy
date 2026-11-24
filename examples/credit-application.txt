@@ -1,0 +1,6 @@
+This is the same fictional Lakeside Honda credit application the app loads
+as the default sample. All values are made up (example.com email, 555 phone,
+test Visa 4111-1111-1111-1111). Open the app and click "F&I credit application"
+or run:
+
+  .venv/bin/python -m pii_proxy once --sample credit_application --role fi_manager
