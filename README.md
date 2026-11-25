@@ -1,5 +1,7 @@
 # Deterministic PII Unmasking Proxy
 
+**Portfolio project #6 of 12** from [@suraj_sharma14's FDE project list](https://x.com/suraj_sharma14/status/2125197762752806998).
+
 A small, local demo of a **privacy proxy** that sits between an application and a language model. Before the model sees a prompt, the proxy finds personal data (SSNs, card numbers, phone numbers, emails, dates of birth, driver’s licenses, VINs, bank routing and account numbers, and labeled names), replaces each value with a **stable token**, and only later puts the original values back — and only if the caller is allowed to see them.
 
 This is a **portfolio demo**, not production software and not a compliance certification. Detection is regex plus checksums, not a certified DLP product. The vault key is a local demo file, not a KMS. The default model is a mock that runs on this machine and never calls a paid API.
