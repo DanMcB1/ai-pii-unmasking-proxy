@@ -40,13 +40,17 @@ _VIN_WEIGHTS = (8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2)
 
 
 def vin_ok(vin: str) -> bool:
-    """17-character VIN with no I/O/Q and a valid check digit (position 9)."""
+    """17-character VIN with at least one letter, no I/O/Q, and a valid check digit."""
     vin = vin.upper()
     if len(vin) != 17:
         return False
     if any(ch in "IOQ" for ch in vin):
         return False
     if any(ch not in _VIN_MAP for ch in vin):
+        return False
+    # Real VINs always contain letters. A 17-digit numeric run is not a VIN
+    # even if the ISO 3779 check digit happens to pass (for example, all nines).
+    if not any(ch.isalpha() for ch in vin):
         return False
     total = 0
     for i, ch in enumerate(vin):

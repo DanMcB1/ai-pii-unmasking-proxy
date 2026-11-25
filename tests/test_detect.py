@@ -42,6 +42,9 @@ def test_vin_check_digit():
     assert vin_ok("1HGCM82633A004352")
     assert not vin_ok("1LKSDM260MCB00001")  # wrong check digit
     assert not vin_ok("1LKSDM26IMCB00001")  # I is not a VIN character
+    # All-numeric 17-digit runs can pass the check digit (all nines does)
+    # but are not VINs, because a real VIN always contains letters.
+    assert not vin_ok("99999999999999999")
 
 
 def test_ssn_dashed():
@@ -132,3 +135,32 @@ def test_real_phone_and_account_still_detected():
     assert _values("Call (207) 555-0148 please", "phone") == ["(207) 555-0148"]
     assert _values("Mobile 207-555-0148", "phone") == ["207-555-0148"]
     assert _values("Account number: 1002003344", "bank_account") == ["1002003344"]
+
+def test_numeric_17_digit_run_is_not_a_vin():
+    # A pure-numeric 17-digit run that happens to pass the VIN check digit
+    # used to be tagged as a VIN. It should follow the 13-19 digit rule.
+    nines = "99999999999999999"
+    unlabeled = f"The reference number is {nines} today"
+    assert vin_ok("1HGCM82633A004352")
+    assert _values("VIN 1HGCM82633A004352 is on the lot", "vin") == ["1HGCM82633A004352"]
+    assert "vin" not in _types(unlabeled)
+    assert "phone" not in _types(unlabeled)
+    assert "bank_account" not in _types(unlabeled)
+    assert _values(unlabeled, "credit_card") == []
+
+    # Luhn-valid 17-digit numeric runs are cards, not VINs.
+    luhn_ok_17 = "99999999999999996"
+    assert luhn_ok(luhn_ok_17)
+    assert _values(f"Charge {luhn_ok_17} today", "credit_card") == [luhn_ok_17]
+    assert "vin" not in _types(f"Charge {luhn_ok_17} today")
+
+    # After a card label, a 17-digit run that fails Luhn is still a card.
+    labeled = f"Card number {nines} for a deposit"
+    assert _values(labeled, "credit_card") == [nines]
+    assert "vin" not in _types(labeled)
+    assert "phone" not in _types(labeled)
+    assert "bank_account" not in _types(labeled)
+
+    # After an account label, the same failed-Luhn run stays untagged.
+    account = f"Account number: {nines}"
+    assert _types(account) == set()
